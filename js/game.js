@@ -45,6 +45,7 @@ var game = {
         // Initialize objects
         levels.init();
         loader.init();
+        mouse.init();
 
         // Hide all game layers and display the start screen
         $('.gamelayer').hide();
@@ -217,5 +218,41 @@ var loader = {
                 loader.onload = undefined;
             }
         }
+    }
+}
+
+var mouse = {
+    x: 0,
+    y: 0,
+    down: false,
+
+    init: function () {
+        $('#gamecanvas').mousemove(mouse.mousemovehandler);
+        $('#gamecanvas').mousedown(mouse.mousedownhandler);
+        $('#gamecanvas').mouseup(mouse.mouseuphandler);
+        $('#gamecanvas').mouseout(mouse.mouseuphandler);
+    },
+
+    mousemovehandler: function (event) {
+        var offset = $('#gamecanvas').offset();
+
+        mouse.x = event.pageX - offset.left;
+        moues.y = event.pageY - offset.top;
+
+        if (mouse.down) {
+            mouse.dragging = true;
+        }
+    },
+
+    mousedownhandler: function (event) {
+        mouse.down = true;
+        mouse.downX = mouse.x;
+        mouse.downY = mouse.y;
+        event.originalEvent.preventDefault();
+    },
+
+    mouseuphandler: function (event) {
+        mouse.down = false;
+        mouse.dragging = false;
     }
 }
