@@ -33,9 +33,17 @@ $(document).ready(function () {
     game.init();
 });
 
+var gameModes = {
+    "intro": 1,
+    "load-next-hero": 2,
+    "wait-for-firing": 3,
+    "firing": 4,
+    "fired": 5,
+}
+
 var game = {
     // Game mode
-    mode: "intro",
+    mode: gameModes.intro,
     // X & Y Coordinates of the slingshot
     slingshotX: 140,
     slingshotY: 280,
@@ -72,7 +80,7 @@ var game = {
         $('#gamecanvas').show();
         $('#scorescreen').show();
 
-        game.mode = "intro";
+        game.mode = gameModes.intro;
         game.offsetLeft = 0;
         game.ended = false;
         game.animationFrame = window.requestAnimationFrame(game.animate, game.canvas);
