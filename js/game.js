@@ -1,3 +1,14 @@
+// Declare all the commonly used objects as variables for convenience
+var b2Vec2 = Box2D.Common.Math.b2Vec2;
+var b2BodyDef = Box2D.Dynamics.b2BodyDef;
+var b2Body = Box2D.Dynamics.b2Body;
+var b2FixtureDef = Box2D.Dynamics.b2FixtureDef;
+var b2Fixture = Box2D.Dynamics.b2Fixture;
+var b2World = Box2D.Dynamics.b2World;
+var b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape;
+var b2CircleShape = Box2D.Collision.Shapes.b2CircleShape;
+var b2DebugDraw = Box2D.Dynamics.b2DebugDraw;
+
 // Set up requestAnimationFrame and cancelAnimationFrame for use in the game code
 // TODO: Create own function to call inside of $().ready()
 (function () {
@@ -35,8 +46,8 @@ $(document).ready(function () {
 
 var gameModes = {
     "intro": 1,
-    "load-next-hero": 2,
-    "wait-for-firing": 3,
+    "loadNextHero": 2,
+    "waitForFiring": 3,
     "firing": 4,
     "fired": 5,
 }
@@ -44,9 +55,20 @@ var gameModes = {
 var game = {
     // Game mode
     mode: gameModes.intro,
+
     // X & Y Coordinates of the slingshot
     slingshotX: 140,
     slingshotY: 280,
+
+    // Maximum panning speed per frame in pixels
+    maxSpeed: 3,
+    // Minimum and maximum panning offset
+    minOffset: 0,
+    maxOffset: 300,
+    // Current panning offset
+    offsetLeft: 0,
+    // The game score
+    score: 0,
 
     // Start initializing objects, preloading assets and display start screen
     init: function () {
@@ -87,7 +109,60 @@ var game = {
     },
 
     handlePanning: function () {
-        game.offsetLeft++; // Temporary placeholder - keep panning to the right
+        if (game.mode == gameModes.intro) {
+            if (game.panTo(700)) {
+                game.mode = gameModes.loadNextHero;
+            }
+        }
+
+        if (game.mode == gameModes.waitForFiring) {
+            if (mouse.dragging) {
+                game.panTo(mouse.x + game.offsetLeft);
+            } else {
+                game.panTo(game.slingshotX);
+            }
+        }
+
+        if (game.mode == gameModes.loadNextHero) {
+            // TODO:
+            // Check if any villains are alive, if not, end the level (success)
+            // Check if there are any more heroes left to load, if not, end the level (failure)
+
+            // Load the hero and set mode to wait-for-firing
+            game.mode = gameModes.waitForFiring;
+        }
+
+        if (game.mode == gameModes.firing) {
+            game.panTo(game.slingshotX);
+        }
+
+        if (game.mode == gameModes.fired) {
+            // TODO:
+            // Pan to wherever the hero currently is
+        }
+    },
+
+    panTo: function (newCenter) {
+        if (Math.abs(newCenter - game.offsetLeft - game.canvas.width / 4) > 0 &&
+            game.offsetLeft <= game.maxOffset && game.offsetLeft >= game.minOffset
+        ) {
+            var deltaX = Math.round((newCenter - game.offsetLeft - game.canvas.width / 4) / 2);
+            if (deltaX && Math.abs(deltaX) > game.maxSpeed) {
+                deltaX = game.maxSpeed * Math.abs(deltaX) / (deltaX);
+            }
+            game.offsetLeft += deltaX;
+        } else {
+            return true;
+        }
+
+        if (game.offsetLeft < game.minOffset) {
+            game.offsetLeft = game.minOffset;
+            return true;
+        } else if (game.offsetLeft > game.maxOffset) {
+            game.offsetLeft = game.maxOffset;
+            return true;
+        }
+        return false;
     },
 
     animate: function () {
@@ -170,6 +245,136 @@ var levels = {
     }
 }
 
+var entities = {
+    types = {
+        "hero": "hero",
+        "villain": "villain",
+        "ground": "ground",
+        "block": "block",
+    },
+
+    definitions: {
+        // Material definitions
+        "glass": {
+            fullHealth: 100,
+            density: 2.4,
+            friction: 0.4,
+            restitution: 0.15,
+        },
+        "wood": {
+            fullHealth: 500,
+            density: 0.7,
+            friction: 0.4,
+            restitution: 0.4,
+        },
+        "dirt": {
+            density: 3.0,
+            friction: 1.5,
+            restitution: 0.2,
+        },
+        // Villain definitions
+        "burger": {
+            shape: "circle",
+            radius: 25,
+            fullHealth: 40,
+            density: 1,
+            friction: 0.5,
+            restitution: 0.4,
+        },
+        "sodacan": {
+            shape: "rectangle",
+            width: 40,
+            height: 60,
+            fullHealth: 80,
+            density: 1,
+            friction: 0.5,
+            restitution: 0.7,
+        },
+        "fries": {
+            shape: "rectangle",
+            width: 40,
+            height: 50,
+            fullHealth: 50,
+            density: 1,
+            friction: 0.5,
+            restitution: 0.6,
+        },
+        // Hero definitions
+        "apple": {
+            shape: "circle",
+            radius: 25,
+            density: 1.5,
+            friction: 0.5,
+            restitution: 0.4,
+        },
+        "orange": {
+            shape: "circle",
+            radius: 25,
+            density: 1.5,
+            friction: 0.5,
+            restitution: 0.4,
+        },
+        "strawberry": {
+            shape: "circle",
+            radius: 15,
+            density: 2.0,
+            friction: 0.5,
+            restitution: 0.4,
+        },
+    },
+    
+    // Take the entity, create a Box2D body, and add it to the world
+    create: function (entity) {
+        var definition = entities.definitions[entity.name];
+        if (!definition) {
+            console.log("Undefined entity name", entity.name);
+            return;
+        }
+
+        switch (entity.type) {
+            case "block": // simple rectangles
+                entity.health = definition.fullHealth;
+                entity.fullHealth = definition.fullHealth;
+                entity.shape = "rectangle";
+                entity.sprite = loader.loadImage("images/entities/" + entity.name + ".png");
+                box2d.createRectangle(entity, definition);
+                break;
+
+            case "ground": // simple rectangles
+                // No need for health. These are indestructible
+                entity.shape = "rectangle";
+                // No need for sprites. These won't be drawn at all
+                box2d.createRectangle(entity, definition);
+                break;
+
+            case "hero": // simple circles
+            case "villain": // can be circles or rectangles
+                entity.health = definition.fullHealth;
+                entity.fullHealth = definition.fullHealth;
+                entity.sprite = loader.loadImage("images/entities/" + entity.name + ".png");
+                entity.shape = definition.shape;
+                if (definition.shape == "circle") {
+                    entity.radius = definition.radius;
+                    box2d.createCircle(entity, definition);
+                } else if (definition.shape == "rectangle") {
+                    entity.width = definition.width;
+                    entity.height = definition.height;
+                    box2d.createRectangle(entity, definition);
+                }
+                break;
+
+            default:
+                console.log("Undefined entity type", entity.type);
+                break;
+        }
+    },
+
+    // Take the entity, it's position and it's angle and draw it on the game canvas
+    draw: function (entity, position, angle) {
+
+    }
+}
+
 var loader = {
     loaded: true,
     loadedCount: 0, // Assets that have been loaded so far
@@ -245,7 +450,7 @@ var mouse = {
         var offset = $('#gamecanvas').offset();
 
         mouse.x = event.pageX - offset.left;
-        moues.y = event.pageY - offset.top;
+        mouse.y = event.pageY - offset.top;
 
         if (mouse.down) {
             mouse.dragging = true;
@@ -262,5 +467,73 @@ var mouse = {
     mouseuphandler: function (event) {
         mouse.down = false;
         mouse.dragging = false;
+    }
+}
+
+// Physics
+var box2d = {
+    scale: 30,
+    init: function () {
+        // Set up the Box2D world that will do most of the physics calculation
+        var gravity = new b2Vec2(0, 9.8); // Declare gravity as 9.8 m/s^2 downward
+        var allowSleep = true; // Allow objects that are at rest to fall asleep and be excluded from calculations
+        box2d.world = new b2World(gravity, allowSleep);
+    },
+
+    createRectangle: function (entity, definition) {
+        var bodyDef = new b2BodyDef;
+        if (entity.isStatic) {
+            bodyDef.type = b2Body.b2_staticBody;
+        } else {
+            bodyDef.type = b2Body.b2_dynamicBody;
+        }
+
+        bodyDef.position.x = entity.x / box2d.scale;
+        bodyDef.position.y = entity.y / box2d.scale;
+        if (entity.angle) {
+            bodyDef.angle = Math.PI * entity.angle / 180;
+        }
+
+        var fixtureDef = new b2FixtureDef;
+        fixtureDef.density = definition.density;
+        fixtureDef.friction = definition.friction;
+        fixtureDef.restitution = definition.restitution;
+
+        fixtureDef.shape = new b2PolygonShape;
+        fixtureDef.shape.SetAsBox(entity.width / 2 / box2d.scale, entity.height / 2 / box2d.scale);
+
+        var body = box2d.world.CreateBody(bodyDef);
+        body.SetUserData(entity);
+
+        var fixture = body.CreateFixture(fixtureDef);
+        return body;
+    },
+
+    createCircle: function (entity, definition) {
+        var bodyDef = new b2BodyDef;
+        if (entity.isStatic) {
+            bodyDef.type = b2Body.b2_staticBody;
+        } else {
+            bodyDef.type = b2Body.b2_dynamicBody;
+        }
+
+        bodyDef.position.x = entity.x / box2d.scale;
+        bodyDef.position.y = entity.y / box2d.scale;
+        if (entity.angle) {
+            bodyDef.angle = Math.PI * entity.angle / 180;
+        }
+
+        var fixtureDef = new b2FixtureDef;
+        fixtureDef.density = definition.density;
+        fixtureDef.friction = definition.friction;
+        fixtureDef.restitution = definition.restitution;
+
+        fixtureDef.shape = new b2CircleShape(entity.radius / box2d.scale);
+        
+        var body = box2d.world.CreateBody(bodyDef);
+        body.SetUserData(entity);
+
+        var fixture = body.CreateFixture(fixtureDef);
+        return body;
     }
 }
