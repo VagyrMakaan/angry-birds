@@ -192,13 +192,184 @@ var levels = {
             // First level
             foreground: 'desert-foreground',
             background: 'clouds-background',
-            entities: []
+            entities: [
+                {
+                    type: entities.types.ground,
+                    name: entities.definitions.dirt.id,
+                    x: 500,
+                    y: 440,
+                    width: 1000,
+                    height: 20,
+                    isStatic: true,
+                },
+                {
+                    type: entities.types.ground,
+                    name: entities.definitions.wood.id,
+                    x: 180,
+                    y: 390,
+                    width: 40,
+                    height: 80,
+                    isStatic: true,
+                },
+                
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.wood.id,
+                    x: 520,
+                    y: 375,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.glass.id,
+                    x: 520,
+                    y: 275,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.villain,
+                    name: entities.definitions.burger.id,
+                    x: 520,
+                    y: 200,
+                    scoreValue: 590,
+                },
+
+                
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.wood.id,
+                    x: 620,
+                    y: 375,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.glass.id,
+                    x: 620,
+                    y: 275,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.villain,
+                    name: entities.definitions.fries.id,
+                    x: 620,
+                    y: 200,
+                    scoreValue: 420,
+                },
+
+                {
+                    type: entities.types.hero,
+                    name: entities.definitions.orange.id,
+                    x: 90,
+                    y: 410,
+                },
+                {
+                    type: entities.types.hero,
+                    name: entities.definitions.apple.id,
+                    x: 150,
+                    y: 410,
+                },
+            ]
         },
         {
             // Second level
+            // TODO: see page 72 of "Pro HTML5 Games" by Shankar for correct second level code
             foreground: 'desert-foreground',
             background: 'clouds-background',
-            entities: []
+            entities: [
+                {
+                    type: entities.types.ground,
+                    name: entities.definitions.dirt.id,
+                    x: 500,
+                    y: 440,
+                    width: 1000,
+                    height: 20,
+                    isStatic: true,
+                },
+                {
+                    type: entities.types.ground,
+                    name: entities.definitions.wood.id,
+                    x: 180,
+                    y: 390,
+                    width: 40,
+                    height: 80,
+                    isStatic: true,
+                },
+                
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.wood.id,
+                    x: 520,
+                    y: 375,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.glass.id,
+                    x: 520,
+                    y: 275,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.villain,
+                    name: entities.definitions.burger.id,
+                    x: 520,
+                    y: 200,
+                    scoreValue: 590,
+                },
+
+                
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.wood.id,
+                    x: 620,
+                    y: 375,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.block,
+                    name: entities.definitions.glass.id,
+                    x: 620,
+                    y: 275,
+                    angle: 90,
+                    width: 100,
+                    height: 25,
+                },
+                {
+                    type: entities.types.villain,
+                    name: entities.definitions.fries.id,
+                    x: 620,
+                    y: 200,
+                    scoreValue: 420,
+                },
+
+                {
+                    type: entities.types.hero,
+                    name: entities.definitions.orange.id,
+                    x: 90,
+                    y: 410,
+                },
+                {
+                    type: entities.types.hero,
+                    name: entities.definitions.apple.id,
+                    x: 150,
+                    y: 410,
+                },
+            ]
         }
     ],
 
@@ -221,6 +392,9 @@ var levels = {
 
     // Load all data and images for a specific level
     load: function (number) {
+        // Initialize Box2D world whenever a level is loaded
+        box2d.init();
+
         // Declare a new currentLevel object
         game.currentLevel = {
             number: number, 
@@ -228,6 +402,7 @@ var levels = {
         };
         game.score = 0;
         $('#score').html('Score: ' + game.score);
+        game.currentHero = undefined;
         var level = levels.data[number];
 
         // Load the background, foreground and slingshot images
@@ -235,6 +410,12 @@ var levels = {
         game.currentLevel.foregroundImage = loader.loadImage("images/backgrounds/" + level.foreground + ".png");
         game.slingshotImage = loader.loadImage("images/slingshot.png");
         game.slingshotFrontImage = loader.loadImage("images/slingshot-front.png");
+
+        // Load all the entities
+        for (var i = level.entities.length - 1; i >= 0; i--) {
+            var entity = level.entities[i];
+            entities.create(entity);
+        }
 
         // Call game.start() once the assets have loaded
         if (loader.loaded) {
@@ -256,24 +437,28 @@ var entities = {
     definitions: {
         // Material definitions
         "glass": {
+            id: "glass",
             fullHealth: 100,
             density: 2.4,
             friction: 0.4,
             restitution: 0.15,
         },
         "wood": {
+            id: "wood",
             fullHealth: 500,
             density: 0.7,
             friction: 0.4,
             restitution: 0.4,
         },
         "dirt": {
+            id: "dirt",
             density: 3.0,
             friction: 1.5,
             restitution: 0.2,
         },
         // Villain definitions
         "burger": {
+            id: "burger",
             shape: "circle",
             radius: 25,
             fullHealth: 40,
@@ -282,6 +467,7 @@ var entities = {
             restitution: 0.4,
         },
         "sodacan": {
+            id: "sodacan",
             shape: "rectangle",
             width: 40,
             height: 60,
@@ -291,6 +477,7 @@ var entities = {
             restitution: 0.7,
         },
         "fries": {
+            id: "fries",
             shape: "rectangle",
             width: 40,
             height: 50,
@@ -301,6 +488,7 @@ var entities = {
         },
         // Hero definitions
         "apple": {
+            id: "apple",
             shape: "circle",
             radius: 25,
             density: 1.5,
@@ -308,6 +496,7 @@ var entities = {
             restitution: 0.4,
         },
         "orange": {
+            id: "orange",
             shape: "circle",
             radius: 25,
             density: 1.5,
@@ -315,6 +504,7 @@ var entities = {
             restitution: 0.4,
         },
         "strawberry": {
+            id: "strawberry",
             shape: "circle",
             radius: 15,
             density: 2.0,
